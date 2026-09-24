@@ -1,0 +1,223 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Direct token-based super-admin check (zero get() or exists() lookups for list query compatibility)
+    function isSuperAdminEmail() {
+      return isAuthenticated() && 
+        (request.auth.token.email == 'anushri.pb.cse.2025@snsct.org' ||
+         request.auth.token.role == 'admin');
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (isSuperAdminEmail() ||
+         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+         (exists(/databases/$(database)/documents/system/bootstrap) &&
+          get(/databases/$(database)/documents/system/bootstrap).data.adminUid == request.auth.uid) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          getUserData().role == 'admin'));
+    }
+
+    // System Collection for First-Admin Bootstrap & Platform Governance
+    match /system/{docId} {
+      allow read: if isAuthenticated();
+      // Allow creation of /system/bootstrap ONLY IF it does not already exist, or if user is authorized admin
+      allow create, update: if isAuthenticated() && (
+        isAdmin() || 
+        (docId == 'bootstrap' && !exists(/databases/$(database)/documents/system/bootstrap))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Test collection for boot connectivity check
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Dedicated Admins Collection (Authoritative Admin Registry)
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // On create: standard public registrations can ONLY set initial role to 'buyer' or 'seller'.
+      // Self-assigning 'admin' is strictly forbidden unless already authorized as an admin.
+      allow create: if isAuthenticated() && request.auth.uid == userId && (
+        request.resource.data.role in ['buyer', 'seller'] ||
+        isAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+      // On update: regular users can update profile details, but they CANNOT modify
+      // their 'role' or 'verificationStatus' fields (prevents privilege escalation).
+      // Only an existing authenticated administrator can change role or verificationStatus.
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (request.auth.uid == userId && 
+         request.resource.data.role == resource.data.role &&
+         request.resource.data.verificationStatus == resource.data.verificationStatus)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Businesses Collection
+    match /businesses/{businessId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (resource.data.userId == request.auth.uid &&
+         request.resource.data.verificationStatus == resource.data.verificationStatus)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Business Verifications Collection
+    match /businessVerifications/{verificationId} {
+      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSuperAdminEmail());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Resources (Surplus Listings)
+    match /resources/{resourceId} {
+      allow read: if true; // Public marketplace access
+      allow create: if isAuthenticated() && (request.resource.data.sellerId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+
+    // Orders (Secure ABAC: Buyers see their own orders, Sellers see their orders, Admins see all)
+    match /orders/{orderId} {
+      allow get: if isAuthenticated() && (
+        resource.data.buyerId == request.auth.uid || 
+        resource.data.sellerId == request.auth.uid || 
+        isAdmin()
+      );
+      allow list: if isAuthenticated() && (
+        resource.data.buyerId == request.auth.uid || 
+        resource.data.sellerId == request.auth.uid || 
+        isSuperAdminEmail()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.buyerId == request.auth.uid || 
+        isAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        resource.data.buyerId == request.auth.uid || 
+        resource.data.sellerId == request.auth.uid || 
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Order Items
+    match /orderItems/{orderItemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Cart
+    match /cart/{cartId} {
+      allow read, write: if isAuthenticated() && (
+        request.auth.uid == cartId || 
+        (resource != null && request.auth.uid == resource.data.userId) ||
+        (request.resource != null && request.auth.uid == request.resource.data.userId)
+      );
+    }
+
+    // Messages
+    match /messages/{messageId} {
+      allow get: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid || 
+        resource.data.receiverId == request.auth.uid || 
+        isAdmin()
+      );
+      allow list: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid || 
+        resource.data.receiverId == request.auth.uid || 
+        isSuperAdminEmail()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.receiverId == request.auth.uid || 
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Reviews
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (resource.data.reviewerId == request.auth.uid || isAdmin());
+    }
+
+    // Notifications (Secure ABAC: Authenticated users can list/read only their own notifications)
+    match /notifications/{notificationId} {
+      allow get: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
+      allow list: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isSuperAdminEmail()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isAdmin()
+      );
+    }
+
+    // AI Recommendations
+    match /aiRecommendations/{recId} {
+      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSuperAdminEmail());
+      allow write: if isAuthenticated() && (
+        isAdmin() || 
+        (resource != null && resource.data.userId == request.auth.uid) ||
+        (request.resource != null && request.resource.data.userId == request.auth.uid)
+      );
+    }
+
+    // Transactions
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.buyerId == request.auth.uid || 
+        resource.data.sellerId == request.auth.uid || 
+        isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Sustainability Metrics
+    match /sustainabilityMetrics/{metricId} {
+      allow read: if true; // Public circular impact transparency
+      allow write: if isAuthenticated();
+    }
+  }
+}

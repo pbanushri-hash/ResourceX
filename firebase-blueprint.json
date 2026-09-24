@@ -1,0 +1,267 @@
+{
+  "entities": {
+    "users": {
+      "title": "users",
+      "description": "Registered system accounts with authenticated UID and assigned roles (buyer, seller, admin)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["buyer", "seller", "admin"] },
+        "businessId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "businessType": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "gstNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "verificationStatus": { "type": "string", "enum": ["unverified", "pending", "verified", "rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email", "role", "name", "companyName", "verificationStatus"]
+    },
+    "businesses": {
+      "title": "businesses",
+      "description": "Corporate enterprise profiles linked to registered entities",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "businessType": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "gstNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "verificationStatus": { "type": "string" },
+        "verificationDocUrl": { "type": "string" },
+        "verificationDocName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "companyName", "registrationNumber", "gstNumber", "verificationStatus"]
+    },
+    "businessVerifications": {
+      "title": "businessVerifications",
+      "description": "Regulatory compliance audit requests reviewed by administrators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "userId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "businessType": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "gstNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "documentName": { "type": "string" },
+        "documentUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "reviewNotes": { "type": "string" },
+        "reviewedAt": { "type": "string" },
+        "reviewedBy": { "type": "string" },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "companyName", "registrationNumber", "gstNumber", "status"]
+    },
+    "resources": {
+      "title": "resources",
+      "description": "Industrial surplus inventory listings posted by verified sellers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "businessId": { "type": "string" },
+        "sellerCompanyName": { "type": "string" },
+        "sellerLocation": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "condition": { "type": "string" },
+        "originalPrice": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "minOrderQuantity": { "type": "number" },
+        "location": { "type": "string" },
+        "availability": { "type": "string", "enum": ["available", "reserved", "sold"] },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "resourceType": { "type": "string", "enum": ["for_sale", "donation", "for_donation"] },
+        "expiryDate": { "type": "string" },
+        "sustainabilityInfo": {
+          "type": "object",
+          "properties": {
+            "estimatedWeightKg": { "type": "number" },
+            "co2SavingsKg": { "type": "number" },
+            "recyclabilityNotes": { "type": "string" }
+          }
+        },
+        "status": { "type": "string", "enum": ["active", "removed_by_admin"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "sellerId", "sellerCompanyName", "name", "category", "quantity", "unit", "sellingPrice", "availability", "status"]
+    },
+    "orders": {
+      "title": "orders",
+      "description": "Procurement orders executed between buyers and sellers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "buyerCompanyName": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerCompanyName": { "type": "string" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"] },
+        "shippingAddress": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "buyerId", "sellerId", "totalAmount", "status", "shippingAddress"]
+    },
+    "orderItems": {
+      "title": "orderItems",
+      "description": "Itemized surplus line items tied to specific orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "resourceName": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "pricePerUnit": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "estimatedWeightKg": { "type": "number" }
+      },
+      "required": ["id", "orderId", "resourceId", "quantity", "unit", "pricePerUnit", "totalPrice"]
+    },
+    "cart": {
+      "title": "cart",
+      "description": "Buyer procurement cart contents keyed by user UID",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "items"]
+    },
+    "messages": {
+      "title": "messages",
+      "description": "B2B commercial inquiries and vendor direct correspondence",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderCompanyName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "receiverCompanyName": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "resourceName": { "type": "string" },
+        "content": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "senderId", "receiverId", "content", "createdAt"]
+    },
+    "reviews": {
+      "title": "reviews",
+      "description": "Corporate counterparty ratings and fulfillment feedback",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "orderId", "reviewerId", "targetUserId", "rating"]
+    },
+    "notifications": {
+      "title": "notifications",
+      "description": "System alerts for verification status changes and orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "aiRecommendations": {
+      "title": "aiRecommendations",
+      "description": "Cached Gemini semantic matching and secondary market recommendations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "query": { "type": "string" },
+        "category": { "type": "string" },
+        "maxBudget": { "type": "number" },
+        "matches": { "type": "array" },
+        "summary": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "matches", "summary", "createdAt"]
+    },
+    "transactions": {
+      "title": "transactions",
+      "description": "Financial escrow and settlement records for completed B2B trades",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "orderId", "buyerId", "sellerId", "amount", "status", "createdAt"]
+    },
+    "sustainabilityMetrics": {
+      "title": "sustainabilityMetrics",
+      "description": "Aggregated platform circular metrics derived from completed material deliveries",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "totalWasteDivertedKg": { "type": "number" },
+        "co2AvoidedKg": { "type": "number" },
+        "totalResourcesReused": { "type": "number" },
+        "totalResourcesDonated": { "type": "number" },
+        "activeBusinesses": { "type": "number" },
+        "totalOrdersCompleted": { "type": "number" },
+        "categoriesExchanged": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "totalWasteDivertedKg", "co2AvoidedKg", "totalResourcesReused"]
+    }
+  }
+}
